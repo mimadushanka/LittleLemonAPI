@@ -9,5 +9,9 @@ urlpatterns = [
     path('menu-items/',views.menu_items),
     path('category/',views.category),
     path('menu-items/<int:id>',views.single_item),
+    path('groups/manager/users/',views.managers),
+    path('groups/manager/users/<int:id>',views.revoke_manager),
+    path('groups/delivery-crew/users/',views.delivery_crew),
+    path('groups/delivery-crew/users/<int:id>',views.revoke_delivery_crew)
 
 ]

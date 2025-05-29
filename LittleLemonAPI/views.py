@@ -3,9 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .models import MenuItem,Category,Cart,Order,Order_item
-from .serializers import MenuItemSerializer,CategorySerializer
+from .models import MenuItem,Category,Cart,Order,Order_item,User
+from .serializers import MenuItemSerializer,CategorySerializer,UserSerializer
 from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAdminUser
+from django.contrib.auth.models import User,Group
 
 
 # Create your views here.
@@ -83,5 +85,75 @@ def single_item(request,id):
     return Response (serialized_item.data,status=status.HTTP_200_OK)
          
   
-      
+@api_view(['GET','POST'])
+def managers(request):
+    managers_group=Group.objects.get(name='Manager')
+    if request.method=='POST':
+        username=request.data['username']
+        if request.user.groups.filter(name='Manager').exists():
+            if username:
+                user=get_object_or_404(User,username=username)
+                managers_group.user_set.add(user)
+                return Response({'message':'ok'},status=status.HTTP_200_OK)
+            return Response({"message":"error"},status.HTTP_400_BAD_REQUEST)
+        return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+    elif request.method=='GET':
+        if request.user.groups.filter(name='Manager').exists():
+            managers=managers_group.user_set.all()
+            serializer=UserSerializer(managers,many=True)
+            return Response(serializer.data,status=status.HTTP_200_OK)
+        return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+
+
+@api_view(['DELETE'])
+def revoke_manager(request,id):
+    if request.user.groups.filter(name='Manager').exists():
+        user=get_object_or_404(User,pk=id)
+        manager_group=Group.objects.get(name='Manager')
+        if manager_group in user.groups.all():
+            user.groups.remove(manager_group)
+            return Response({'message':'User removed from Manager Group'},status=status.HTTP_200_OK)
+    return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+
+
+
+
+
+@api_view(['GET','POST'])
+
+def delivery_crew(request):
+    delivery_group=Group.objects.get(name='Delivery_crew')
+    if request.method=='POST':
+        username=request.data['username']
+        if request.User.group.filter(name='Manager').exists():
+             if username:
+                user=get_object_or_404(User,username=username)
+                delivery_group.user_set.add(user)
+                return Response({'message':'ok'},status=status.HTTP_200_OK)
+             return Response({"message":"error"},status.HTTP_400_BAD_REQUEST)
+        return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+   
+    elif request.method=='GET':
+        if request.user.groups.filter(name='Manager').exists():
+            delivery_crew=delivery_group.user_set.all()
+            serializer=UserSerializer(delivery_crew,many=True)
+            return Response(serializer.data,status=status.HTTP_200_OK)
+        return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+
+@api_view(['DELETE'])
+def revoke_delivery_crew(request,id):
+    if request.user.groups.filter(name='Manager').exists():
+        user=get_object_or_404(User,pk=id)
+        delivery_group=Group.objects.get(name='Delivery_crew')
+        if delivery_group in user.groups.all():
+            user.groups.remove(delivery_group)
+            return Response({'message':'User removed from delivery Crew'},status=status.HTTP_200_OK)
+    return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+
+
+
+
+
+
+
     

@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .models import MenuItem,Category,Cart,Order,Order_item,User
-from .serializers import MenuItemSerializer,CategorySerializer,UserSerializer
+from .serializers import MenuItemSerializer,CategorySerializer,UserSerializer,CartSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAdminUser
 from django.contrib.auth.models import User,Group
@@ -25,6 +25,7 @@ def manager_view(request):
 
 
 ################################################################  
+#display the items in the menu item category
 @api_view()
 def category(request):
    #if request.method=='GET':
@@ -149,6 +150,55 @@ def revoke_delivery_crew(request,id):
             user.groups.remove(delivery_group)
             return Response({'message':'User removed from delivery Crew'},status=status.HTTP_200_OK)
     return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+
+
+
+@api_view(['GET','POST','DELETE'])
+@permission_classes([IsAuthenticated])
+def add_cart_items(request):
+    if not request.user.groups.filter(name__in=['Manager', 'Delivery_crew']).exists():
+        if request.method=='GET':
+            items = Cart.objects.filter(user=request.user)
+            serialized_item=CartSerializer(items,many=True)
+            return Response(serialized_item.data)
+        elif request.method=='POST':
+            user=request.user
+            menu_item_id=request.data.get('menuitem')
+            quantity=request.data.get('quantity')
+            if not menu_item_id or not quantity:
+                return Response({"message":"error"},status.HTTP_400_BAD_REQUEST)
+            menuitem=get_object_or_404(MenuItem,pk=menu_item_id)
+
+            try: 
+                quantity=int(quantity)
+                if quantity<1:
+                    raise ValueError
+            except ValueError:
+                return Response({"detail": "Quantity must be a positive integer."},status=status.HTTP_400_BAD_REQUEST)
+            
+            unit_price=menuitem.price
+            price=unit_price*quantity
+
+            cart_items=Cart.objects.create(
+                user_id=request.user.id,
+                menuitem=menuitem,
+                quantity=quantity,
+                unit_price=unit_price,
+                price=price
+            )
+            
+            serialized_item=CartSerializer(cart_items)
+            return Response(serialized_item.data, status.HTTP_201_CREATED)
+        
+
+        elif request.method=='DELETE':
+            items = Cart.objects.filter(user=request.user)
+            items.delete()
+            return Response({"detail": "All the cart items are deleted!"},status=status.HTTP_200_OK)
+        
+    return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+
+
 
 
 

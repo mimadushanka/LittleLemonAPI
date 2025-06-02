@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import MenuItem,Category,Cart
+from .models import MenuItem,Category,Cart,Order_item,Order
 from django.contrib.auth.models import User
 
 # class CategorySerializer(serializers.Serializer):
@@ -37,3 +37,22 @@ class CartSerializer(serializers.ModelSerializer):
         model=Cart
         fields=['id','unit_price','price','user_id','menuitem','quantity']
         read_only_fields=['unit_price','price','user_id',]
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Order_item
+        fields=['id','order','menuitem','quantity','unit_price','price']
+        read_only_fields=['order','menuitem','quantity','unit_price','price']
+
+    
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Order
+        fields=['id','user','delivery_crew','status','total','date']
+        read_only_fields=['id','user','total','date']
+
+class OrderStatusUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Order
+        fields=['status']

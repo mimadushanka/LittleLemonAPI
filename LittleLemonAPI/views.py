@@ -1,13 +1,15 @@
+from django.utils import timezone
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .models import MenuItem,Category,Cart,Order,Order_item,User
-from .serializers import MenuItemSerializer,CategorySerializer,UserSerializer,CartSerializer
+from .serializers import MenuItemSerializer,CategorySerializer,UserSerializer,CartSerializer,OrderItemSerializer,OrderSerializer,OrderStatusUpdateSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAdminUser
 from django.contrib.auth.models import User,Group
+from django.db import transaction
 
 
 # Create your views here.
@@ -197,6 +199,119 @@ def add_cart_items(request):
             return Response({"detail": "All the cart items are deleted!"},status=status.HTTP_200_OK)
         
     return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+
+
+#create order item for perticular user 
+
+@api_view(['POST','GET'])
+@permission_classes([IsAuthenticated])
+def order_item(request):
+    if request.method=='POST':
+        if not request.user.groups.filter(name__in=['Manager', 'Delivery_crew']).exists():
+            user=request.user
+            cart_items=Cart.objects.filter(user=user)
+            
+            if not cart_items.exists():
+                return Response({"message":"Cart is empty, There is no items in the Cart"},status.HTTP_400_BAD_REQUEST)
+            
+            with transaction.atomic():
+              total = sum(item.price for item in cart_items)
+              order = Order.objects.create(
+              user=user,
+              total=total,
+              date=timezone.now().date()
+            )
+                # Create order items from cart
+            order_items = [
+                Order_item(
+                order=order,
+                menuitem=item.menuitem,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                price=item.price
+                )for item in cart_items
+            ]
+            Order_item.objects.bulk_create(order_items)  
+            cart_items.delete()
+            return Response({"detail": "Order placed successfully!"}, status=status.HTTP_201_CREATED)
+        return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+    
+
+    if request.method=='GET':
+          if not request.user.groups.filter(name__in=['Manager', 'Delivery_crew']).exists():
+            orders = Order.objects.filter(user=request.user)
+            items = Order_item.objects.filter(order__in=orders)
+            if not items.exists():
+             return Response({"message": "No order items found."}, status=status.HTTP_400_BAD_REQUEST)
+            serialized_item=OrderItemSerializer(items,many=True)
+            return Response(serialized_item.data)
+          elif  request.user.groups.filter(name='Manager').exists():
+              items = Order_item.objects.all()
+              if not items.exists():
+               return Response({"message": "No order items found."}, status=status.HTTP_400_BAD_REQUEST)
+              serialized_item=OrderItemSerializer(items,many=True)
+              return Response(serialized_item.data)
+          
+          elif  request.user.groups.filter(name='Delivery_crew').exists():##check the logic again
+               orders = Order.objects.filter(delivery_crew=request.user)
+               items = Order_item.objects.filter(order__in=orders)
+               if not items.exists():
+                return Response({"message": "No order items found."}, status=status.HTTP_400_BAD_REQUEST)
+               serialized_item=OrderItemSerializer(items,many=True)
+               return Response(serialized_item.data)
+              
+         # elif request.user.groups.filter(name=['Delivery_crew']).exists():
+    return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
+
+
+
+@api_view(['GET','PUT','PATCH','DELETE'])
+@permission_classes([IsAuthenticated])  
+def order_management(request,id):
+    order=get_object_or_404(Order,pk=id)
+    if request.method=='GET':
+       if request.user.groups.filter(name__in=['Manager', 'Delivery_crew']).exists():
+        return Response({'detail': 'Only customers can access this endpoint.'}, status=status.HTTP_403_FORBIDDEN)
+       
+       elif order.user != request.user:
+        return Response({'detail': 'Unauthorized access to this order.'}, status=status.HTTP_403_FORBIDDEN)
+       
+       serializer = OrderSerializer(order)
+       return Response(serializer.data, status=status.HTTP_200_OK)
+    elif request.method=='PUT':
+        if request.user.groups.filter(name='Manager').exists():
+            serialized_item=OrderSerializer(order,data=request.data)
+            if serialized_item.is_valid():
+                serialized_item.save()
+                return Response(serialized_item.data, status.HTTP_200_OK)
+            return Response(serialized_item.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail':'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+    elif request.method=='PATCH':
+        if request.user.groups.filter(name='Delivery_crew').exists():
+            serialized_item=OrderStatusUpdateSerializer(order,data=request.data,partial=True)
+            if serialized_item.is_valid():
+              serialized_item.save()
+              return Response(serialized_item.data, status=status.HTTP_201_CREATED)
+            return Response(serialized_item.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail':'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+    elif request.method=='DELETE':
+         if request.user.groups.filter(name='Manager').exists():
+            order.delete()
+            return Response({'detail': 'Order deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+         return Response({'detail': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+
+
+             
+
+
+
+
+
+
+
+
+
 
 
 

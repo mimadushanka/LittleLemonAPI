@@ -1,6 +1,6 @@
 This Django REST Framework (DRF) project provides a robust backend API for Little Lemon, a fictional restaurant. The system handles menu management, user group roles, shopping cart, and order processing with fine-grained permission control and rate throttling.
 
-🔧 Features
+Features
 User Roles & Permissions
 
 Manager: Can manage menu items, assign delivery crew, and manage orders.
@@ -46,13 +46,21 @@ Throttling enabled for both anonymous and authenticated users.
 API Endpoints Overview
 
 /api/menu-items/             - GET, POST
+
 /api/menu-items/{id}/        - GET, PUT, PATCH, DELETE
+
 /api/cart/menu-items/        - GET, POST, DELETE
+
 /api/orders/                 - GET, POST
+
 /api/orders/{orderId}/       - GET, PUT, PATCH, DELETE
+
 /api/groups/manager/         - GET, POST
+
 /api/groups/manager/{id}/    - DELETE
+
 /api/groups/delivery-crew/   - GET, POST
+
 /api/groups/delivery-crew/{id}/ - DELETE
 
 Tech Stack
@@ -69,7 +77,7 @@ Token & Session Authentication
 Pagination, Filtering, Throttling
 
 # 1. Clone the repository
-git clone https://github.com/your-username/little-lemon-api.git
+git clone https://github.com/your-username/LittLelemonAPI.git
 cd little-lemon-api
 
 # 2. Install dependencies and create a virtual environment

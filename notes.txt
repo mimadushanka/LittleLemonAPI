@@ -1,0 +1,14 @@
+User Name -> admin ->password-> adminlittlelemon1
+
+All the other users has fllowing password pattern username@django
+
+
+User Name ->jake ->password-> jake@django
+User Name -> amanda ->password-> Amanda@django
+User Name ->chris ->password-> chris@django
+User Name ->john ->password-> jhon@django
+User Name ->katie->password->  Katie@django
+User Name ->lauren ->password-> Lauren@django
+User Name ->megan ->password-> Megan@django
+User Name ->michel ->password-> michel@django
+User Name ->Tyler->password-> Tyler@django

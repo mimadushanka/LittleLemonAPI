@@ -12,30 +12,16 @@ from django.contrib.auth.models import User,Group
 from django.db import transaction
 
 
-# Create your views here.
-@api_view()
-def books(reqest):
-    return Response('message is displayed',status=status.HTTP_200_OK)
-
-@api_view()
-@permission_classes([IsAuthenticated])
-def manager_view(request):
-    if request.user.groups.filter(name='Manager').exists():
-     return Response({"Message":"Only Manager should see this"})
-    else:
-       return Response({'Message':'you dont have access to this view'},403)
-
-
 ################################################################  
 #display the items in the menu item category
-@api_view()
-def category(request):
-   #if request.method=='GET':
-    items=Category.objects.all()
-    serialized_item=CategorySerializer(items,many=True)
-    return Response(serialized_item.data)
+# @api_view()
+# def category(request):
+#    #if request.method=='GET':
+#     items=Category.objects.all()
+#     serialized_item=CategorySerializer(items,many=True)
+#     return Response(serialized_item.data)
     
-
+@permission_classes([IsAuthenticated])
 @api_view(['GET','POST'])
 def menu_items(request):
    if request.method=='POST':
@@ -53,7 +39,7 @@ def menu_items(request):
         
     
 
-
+@permission_classes([IsAuthenticated])
 @api_view(['GET','PUT','PATCH','DELETE'])
 def single_item(request,id):
    item=get_object_or_404(MenuItem,pk=id)
@@ -87,7 +73,7 @@ def single_item(request,id):
     serialized_item=MenuItemSerializer(item)
     return Response (serialized_item.data,status=status.HTTP_200_OK)
          
-  
+@permission_classes([IsAuthenticated])
 @api_view(['GET','POST'])
 def managers(request):
     managers_group=Group.objects.get(name='Manager')
@@ -123,7 +109,7 @@ def revoke_manager(request,id):
 
 
 @api_view(['GET','POST'])
-
+@permission_classes([IsAuthenticated])
 def delivery_crew(request):
     delivery_group=Group.objects.get(name='Delivery_crew')
     if request.method=='POST':

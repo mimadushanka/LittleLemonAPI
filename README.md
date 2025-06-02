@@ -78,6 +78,7 @@ Pagination, Filtering, Throttling
 
 # 1. Clone the repository
 git clone https://github.com/your-username/LittLelemonAPI.git
+
 cd little-lemon-api
 
 # 2. Install dependencies and create a virtual environment

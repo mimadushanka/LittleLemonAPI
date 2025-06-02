@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view,permission_classes
+from rest_framework.decorators import api_view,permission_classes,throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from .models import MenuItem,Category,Cart,Order,Order_item,User
 from .serializers import MenuItemSerializer,CategorySerializer,UserSerializer,CartSerializer,OrderItemSerializer,OrderSerializer,OrderStatusUpdateSerializer
@@ -10,19 +10,17 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAdminUser
 from django.contrib.auth.models import User,Group
 from django.db import transaction
-
+from django.core.paginator import Paginator,EmptyPage
+from rest_framework.throttling import AnonRateThrottle,UserRateThrottle
 
 ################################################################  
-#display the items in the menu item category
-# @api_view()
-# def category(request):
-#    #if request.method=='GET':
-#     items=Category.objects.all()
-#     serialized_item=CategorySerializer(items,many=True)
-#     return Response(serialized_item.data)
-    
-@permission_classes([IsAuthenticated])
+
+
+
+
 @api_view(['GET','POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
 def menu_items(request):
    if request.method=='POST':
        if request.user.groups.filter(name='Manager').exists():
@@ -34,13 +32,39 @@ def menu_items(request):
             return Response({"detail": "Unauthorised"}, status.HTTP_403_FORBIDDEN)   
    if request.method=='GET':
             items=MenuItem.objects.select_related('category').all()
+            ##filtering the items
+            category_name=request.query_params.get('category')
+            to_price=request.query_params.get('to_price')
+            search=request.query_params.get('search')
+            ordering=request.query_params.get('ordering')
+            
+            perpage=request.query_params.get('perpage',default=10)
+            page=request.query_params.get('page',default=1)
+            if category_name:
+                items=items.filter(category__title=category_name)
+            if to_price:
+                items=items.filter(price__lte=to_price)
+            if search:
+                items=items.filter(title__contains=search)
+            if ordering:
+                ordering_fields=ordering.split(",")
+                items=items.order_by(*ordering_fields)
+             #pagination
+            paginator=Paginator(items,per_page=perpage)
+            try:
+                    items=paginator.page(number=page)
+            except EmptyPage:
+                     items=[]
+
             serialized_item=MenuItemSerializer(items,many=True)
             return Response(serialized_item.data,status=status.HTTP_200_OK)
         
     
 
-@permission_classes([IsAuthenticated])
+
 @api_view(['GET','PUT','PATCH','DELETE'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
 def single_item(request,id):
    item=get_object_or_404(MenuItem,pk=id)
        
@@ -73,8 +97,10 @@ def single_item(request,id):
     serialized_item=MenuItemSerializer(item)
     return Response (serialized_item.data,status=status.HTTP_200_OK)
          
-@permission_classes([IsAuthenticated])
+
 @api_view(['GET','POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
 def managers(request):
     managers_group=Group.objects.get(name='Manager')
     if request.method=='POST':
@@ -95,6 +121,8 @@ def managers(request):
 
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
 def revoke_manager(request,id):
     if request.user.groups.filter(name='Manager').exists():
         user=get_object_or_404(User,pk=id)
@@ -110,6 +138,7 @@ def revoke_manager(request,id):
 
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
 def delivery_crew(request):
     delivery_group=Group.objects.get(name='Delivery_crew')
     if request.method=='POST':
@@ -130,6 +159,7 @@ def delivery_crew(request):
         return Response({'detail':'Unauthorized'},status=status.HTTP_403_FORBIDDEN)
 
 @api_view(['DELETE'])
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
 def revoke_delivery_crew(request,id):
     if request.user.groups.filter(name='Manager').exists():
         user=get_object_or_404(User,pk=id)
@@ -143,6 +173,8 @@ def revoke_delivery_crew(request,id):
 
 @api_view(['GET','POST','DELETE'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
+
 def add_cart_items(request):
     if not request.user.groups.filter(name__in=['Manager', 'Delivery_crew']).exists():
         if request.method=='GET':
@@ -191,6 +223,8 @@ def add_cart_items(request):
 
 @api_view(['POST','GET'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
+
 def order_item(request):
     if request.method=='POST':
         if not request.user.groups.filter(name__in=['Manager', 'Delivery_crew']).exists():
@@ -253,6 +287,8 @@ def order_item(request):
 
 @api_view(['GET','PUT','PATCH','DELETE'])
 @permission_classes([IsAuthenticated])  
+@throttle_classes([AnonRateThrottle,UserRateThrottle])  
+
 def order_management(request,id):
     order=get_object_or_404(Order,pk=id)
     if request.method=='GET':

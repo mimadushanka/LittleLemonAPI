@@ -25,4 +25,5 @@ urlpatterns = [
     path('api/',include('djoser.urls')),
     path('',include('djoser.urls.authtoken')),
 
+
 ]
